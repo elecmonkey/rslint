@@ -1,105 +1,73 @@
 package no_focused_tests
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/core"
 	jestUtils "github.com/web-infra-dev/rslint/internal/plugins/jest/utils"
+	"github.com/web-infra-dev/rslint/internal/plugins/testfw"
+	testfwNoFocusedTests "github.com/web-infra-dev/rslint/internal/plugins/testfw/rules/no_focused_tests"
 	"github.com/web-infra-dev/rslint/internal/rule"
-	rslintUtils "github.com/web-infra-dev/rslint/internal/utils"
 )
 
-// Message Builders
-
-func buildErrorFocusedTestMessage() rule.RuleMessage {
-	return rule.RuleMessage{
-		Id:          "focusedTest",
-		Description: "Unexpected focused test",
+func parseJestFnCall(node *ast.Node, ctx rule.RuleContext) *testfw.ParsedFnCall {
+	jestFnCall := jestUtils.ParseJestFnCall(node, ctx)
+	if jestFnCall == nil {
+		return nil
 	}
-}
 
-func buildErrorSuggestRemoveFocusMessage() rule.RuleMessage {
-	return rule.RuleMessage{
-		Id:          "suggestRemoveFocus",
-		Description: "Suggest removing focus from test",
+	kind := testfw.FnKind("")
+	switch jestFnCall.Kind {
+	case jestUtils.JestFnTypeDescribe:
+		kind = testfw.FnKindDescribe
+	case jestUtils.JestFnTypeTest:
+		kind = testfw.FnKindTest
+	default:
+		return nil
 	}
-}
 
-var NoFocusedTestsRule = rule.Rule{
-	Name: "jest/no-focused-tests",
-	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
-		return rule.RuleListeners{
-			ast.KindCallExpression: func(node *ast.Node) {
-				jestFnCall := jestUtils.ParseJestFnCall(node, ctx)
-				if jestFnCall == nil ||
-					(jestFnCall.Kind != jestUtils.JestFnTypeDescribe &&
-						jestFnCall.Kind != jestUtils.JestFnTypeTest) {
-					return
-				}
-
-				if strings.HasPrefix(jestFnCall.Name, "f") {
-					callExpr := node.AsCallExpression()
-					if callExpr == nil {
-						return
-					}
-
-					callee := ast.SkipParentheses(callExpr.Expression)
-					if callee == nil {
-						return
-					}
-
-					calleeRange := rslintUtils.TrimNodeTextRange(ctx.SourceFile, callee)
-					if jestFnCall.Head.Type == jestUtils.JEST_IMPORT_MODE && jestFnCall.Name != jestFnCall.Head.Local.Value {
-						reportNode := jestFnCall.Head.Local.Node
-						if reportNode == nil {
-							reportNode = callee
-						}
-
-						ctx.ReportNode(reportNode, buildErrorFocusedTestMessage())
-					} else {
-						reportNode := jestFnCall.Head.Local.Node
-						if reportNode == nil {
-							reportNode = callee
-						}
-
-						ctx.ReportNodeWithSuggestions(
-							reportNode,
-							buildErrorFocusedTestMessage(),
-							rule.RuleSuggestion{
-								Message: buildErrorSuggestRemoveFocusMessage(),
-								FixesArr: []rule.RuleFix{
-									rule.RuleFixRemoveRange(core.NewTextRange(calleeRange.Pos(), calleeRange.Pos()+1)),
-								},
-							},
-						)
-					}
-				} else {
-					idx := slices.IndexFunc(jestFnCall.MemberEntries, func(entry jestUtils.ParsedJestFnMemberEntry) bool {
-						return entry.Name == "only"
-					})
-					if idx >= 0 {
-						entry := jestFnCall.MemberEntries[idx]
-						startRange := entry.Node.Loc.Pos() - 1
-						endRange := entry.Node.Loc.End()
-						if entry.Node.Kind != ast.KindIdentifier {
-							endRange = entry.Node.End() + 1
-						}
-
-						ctx.ReportNodeWithSuggestions(
-							entry.Node,
-							buildErrorFocusedTestMessage(),
-							rule.RuleSuggestion{
-								Message: buildErrorSuggestRemoveFocusMessage(),
-								FixesArr: []rule.RuleFix{
-									rule.RuleFixRemoveRange(core.NewTextRange(startRange, endRange)),
-								},
-							},
-						)
-					}
-				}
+	return &testfw.ParsedFnCall{
+		Name:          jestFnCall.Name,
+		LocalName:     jestFnCall.LocalName,
+		Kind:          kind,
+		Members:       jestFnCall.Members,
+		MemberEntries: convertMemberEntries(jestFnCall.MemberEntries),
+		Head: testfw.CallHead{
+			Type: convertImportMode(jestFnCall.Head.Type),
+			Local: testfw.CallHeadEntry{
+				Value: jestFnCall.Head.Local.Value,
+				Node:  jestFnCall.Head.Local.Node,
 			},
-		}
-	},
+			Original: testfw.CallHeadEntry{
+				Value: jestFnCall.Head.Original.Value,
+				Node:  jestFnCall.Head.Original.Node,
+			},
+		},
+	}
 }
+
+func convertMemberEntries(entries []jestUtils.ParsedJestFnMemberEntry) []testfw.MemberEntry {
+	out := make([]testfw.MemberEntry, len(entries))
+	for i, entry := range entries {
+		out[i] = testfw.MemberEntry{
+			Name: entry.Name,
+			Node: entry.Node,
+		}
+	}
+	return out
+}
+
+func convertImportMode(mode jestUtils.JestImportMode) testfw.ImportMode {
+	if mode == jestUtils.JEST_IMPORT_MODE {
+		return testfw.ImportedMode
+	}
+	return testfw.GlobalMode
+}
+
+var NoFocusedTestsRule = testfwNoFocusedTests.NewRule(testfwNoFocusedTests.Config{
+	Name:              "jest/no-focused-tests",
+	Parse:             parseJestFnCall,
+	FocusedNamePrefix: "f",
+	FocusedReplacement: map[string]string{
+		"fdescribe": "describe",
+		"fit":       "it",
+	},
+})

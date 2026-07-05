@@ -4,6 +4,7 @@ const recommended: RslintConfigEntry = {
   plugins: ['rstest'],
   rules: {
     'rstest/no-commented-out-tests': 'warn',
+    'rstest/no-focused-tests': 'error',
   },
 };
 
