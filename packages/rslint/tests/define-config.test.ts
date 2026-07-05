@@ -46,6 +46,7 @@ describe('rstestPlugin preset', () => {
         'rstest/expect-expect': 'warn',
         'rstest/no-commented-out-tests': 'warn',
         'rstest/no-disabled-tests': 'warn',
+        'rstest/no-export': 'error',
         'rstest/no-focused-tests': 'error',
         'rstest/no-identical-title': 'error',
         'rstest/no-mocks-import': 'error',

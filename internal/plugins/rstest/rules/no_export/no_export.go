@@ -1,11 +1,11 @@
 package no_export
 
 import (
-	jestUtils "github.com/web-infra-dev/rslint/internal/plugins/jest/utils"
+	rstestUtils "github.com/web-infra-dev/rslint/internal/plugins/rstest/utils"
 	testfwNoExport "github.com/web-infra-dev/rslint/internal/plugins/testfw/rules/no_export"
 )
 
 var NoExportRule = testfwNoExport.NewRule(testfwNoExport.Config{
-	Name:  "jest/no-export",
-	Parse: jestUtils.ParseJestTestFnCall,
+	Name:  "rstest/no-export",
+	Parse: rstestUtils.ParseRstestFnCall,
 })
