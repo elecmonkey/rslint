@@ -170,3 +170,86 @@ func IsValidRstestCall(name string, members []string) bool {
 
 	return true
 }
+
+func ParseRstestExpectCallWithReason(node *ast.Node, ctx rule.RuleContext) (*testfw.ParsedExpectCall, string) {
+	if node == nil || node.Kind != ast.KindCallExpression {
+		return nil, testfw.ExpectParseReasonNone
+	}
+
+	entries := testfw.GetMemberEntries(node)
+	if len(entries) == 0 {
+		return nil, testfw.ExpectParseReasonNone
+	}
+
+	localName := entries[0].Name
+	localNode := resolveHeadLocalNode(node.AsCallExpression())
+	name, originalNode, headType := resolveRstestFunctionReference(node, localName, localNode, ctx)
+	if name != "expect" {
+		return nil, testfw.ExpectParseReasonNone
+	}
+
+	memberEntries := entries[1:]
+	factory := "expect"
+	if len(memberEntries) > 0 {
+		first := memberEntries[0]
+		switch first.Name {
+		case "soft", "poll", "element":
+			factory = first.Name
+			memberEntries = memberEntries[1:]
+		}
+	}
+
+	parsed := &testfw.ParsedExpectCall{
+		Head: testfw.CallHead{
+			Type: headType,
+			Local: testfw.CallHeadEntry{
+				Value: localName,
+				Node:  localNode,
+			},
+			Original: testfw.CallHeadEntry{
+				Value: name,
+				Node:  originalNode,
+			},
+		},
+		Members:       memberNames(memberEntries),
+		MemberEntries: memberEntries,
+		ExpectCall:    expectCallNode(localNode, factory),
+		Factory:       factory,
+		Async:         factory == "poll",
+	}
+
+	if testfw.ApplyParsedExpectCall(parsed) {
+		return parsed, testfw.ExpectParseReasonNone
+	}
+
+	_, _, reason := testfw.FindExpectModifiersAndMatcher(memberEntries)
+	if reason == testfw.ExpectParseReasonMatcherNotFound && testfw.IsMemberAccessNode(node.Parent) {
+		reason = testfw.ExpectParseReasonMatcherNotCalled
+	}
+	if reason != testfw.ExpectParseReasonNone && testfw.FindTopMostCallExpression(node) != node {
+		return nil, testfw.ExpectParseReasonNone
+	}
+
+	return nil, reason
+}
+
+func memberNames(entries []testfw.MemberEntry) []string {
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name
+	}
+	return names
+}
+
+func expectCallNode(localNode *ast.Node, factory string) *ast.Node {
+	if localNode == nil {
+		return nil
+	}
+	if factory == "expect" {
+		return localNode.Parent
+	}
+	if localNode.Parent == nil || localNode.Parent.Parent == nil {
+		return localNode.Parent
+	}
+	return localNode.Parent.Parent
+}

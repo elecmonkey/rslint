@@ -10,6 +10,7 @@ const recommended: RslintConfigEntry = {
     'rstest/no-focused-tests': 'error',
     'rstest/no-identical-title': 'error',
     'rstest/no-mocks-import': 'error',
+    'rstest/valid-expect': 'error',
     'rstest/valid-title': 'error',
   },
 };
