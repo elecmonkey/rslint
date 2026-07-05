@@ -1,5 +1,6 @@
 import { describe, test, expect } from '@rstest/core';
 import { globalIgnores } from '../src/config/define-config.js';
+import { rstestPlugin } from '../src/index.js';
 
 describe('globalIgnores', () => {
   test('returns a config entry containing only the ignores', () => {
@@ -34,5 +35,16 @@ describe('globalIgnores', () => {
     expect(() => globalIgnores([])).toThrow(
       'ignorePatterns must contain at least one pattern',
     );
+  });
+});
+
+describe('rstestPlugin preset', () => {
+  test('exports the Rstest recommended preset', () => {
+    expect(rstestPlugin.configs.recommended).toEqual({
+      plugins: ['rstest'],
+      rules: {
+        'rstest/no-commented-out-tests': 'warn',
+      },
+    });
   });
 });

@@ -16,6 +16,7 @@ const NATIVE_PLUGINS = [
   '@typescript-eslint',
   'import',
   'jest',
+  'rstest',
   'jsx-a11y',
   'promise',
   'react',

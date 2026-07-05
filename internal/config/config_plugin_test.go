@@ -43,6 +43,7 @@ func TestNormalizePluginName(t *testing.T) {
 		{"@typescript-eslint", "@typescript-eslint"},
 		{"eslint-plugin-import", "import"},
 		{"import", "import"},
+		{"rstest", "rstest"},
 		{"react", "react"},
 		// Unknown plugins: returned as-is
 		{"eslint-plugin-react", "eslint-plugin-react"},
@@ -140,6 +141,18 @@ func TestKnownPlugins_GetAllRulesMatchRulePrefix(t *testing.T) {
 				t.Errorf("Plugin %q getAllRules() returned rule %q which does not have prefix %q", plugin.RulePrefix, r.Name, prefix)
 			}
 		}
+	}
+}
+
+func TestRstestPluginRulesRegistered(t *testing.T) {
+	RegisterAllRules()
+
+	r, ok := GlobalRuleRegistry.GetRule("rstest/no-commented-out-tests")
+	if !ok {
+		t.Fatal("expected rstest/no-commented-out-tests to be registered")
+	}
+	if r.Name != "rstest/no-commented-out-tests" {
+		t.Fatalf("unexpected rule name: %q", r.Name)
 	}
 }
 
