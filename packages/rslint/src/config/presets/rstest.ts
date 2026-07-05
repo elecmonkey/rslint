@@ -6,6 +6,7 @@ const recommended: RslintConfigEntry = {
     'rstest/expect-expect': 'warn',
     'rstest/no-commented-out-tests': 'warn',
     'rstest/no-focused-tests': 'error',
+    'rstest/no-mocks-import': 'error',
   },
 };
 
