@@ -1,11 +1,11 @@
 package expect_expect
 
 import (
-	jestUtils "github.com/web-infra-dev/rslint/internal/plugins/jest/utils"
+	rstestUtils "github.com/web-infra-dev/rslint/internal/plugins/rstest/utils"
 	testfwExpectExpect "github.com/web-infra-dev/rslint/internal/plugins/testfw/rules/expect_expect"
 )
 
 var ExpectExpectRule = testfwExpectExpect.NewRule(testfwExpectExpect.Config{
-	Name:  "jest/expect-expect",
-	Parse: jestUtils.ParseJestTestFnCall,
+	Name:  "rstest/expect-expect",
+	Parse: rstestUtils.ParseRstestFnCall,
 })

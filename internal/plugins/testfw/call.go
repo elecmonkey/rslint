@@ -165,3 +165,50 @@ func FindImportDeclaration(node *ast.Node) *ast.ImportDeclaration {
 	}
 	return nil
 }
+
+// CalleeChainName returns a dotted name for a call callee expression.
+// Bracket notation contributes a segment only when the index is a supported
+// static accessor name.
+func CalleeChainName(expr *ast.Node) string {
+	expr = ast.SkipParentheses(expr)
+	if expr == nil {
+		return ""
+	}
+
+	switch expr.Kind {
+	case ast.KindIdentifier:
+		return expr.AsIdentifier().Text
+	case ast.KindPropertyAccessExpression:
+		pa := expr.AsPropertyAccessExpression()
+		left := CalleeChainName(pa.Expression)
+		prop := pa.Name()
+		if prop == nil {
+			return left
+		}
+		pn := propertyName(prop)
+		if left == "" || pn == "" {
+			return left
+		}
+		return left + "." + pn
+	case ast.KindElementAccessExpression:
+		ea := expr.AsElementAccessExpression()
+		left := CalleeChainName(ea.Expression)
+		key := elementAccessName(ast.SkipParentheses(ea.ArgumentExpression))
+		if left == "" || key == "" {
+			return ""
+		}
+		return left + "." + key
+	case ast.KindCallExpression:
+		return CalleeChainName(expr.AsCallExpression().Expression)
+	case ast.KindNewExpression:
+		ne := expr.AsNewExpression()
+		if ne == nil {
+			return ""
+		}
+		return CalleeChainName(ne.Expression)
+	case ast.KindTaggedTemplateExpression:
+		return CalleeChainName(expr.AsTaggedTemplateExpression().Tag)
+	default:
+		return ""
+	}
+}

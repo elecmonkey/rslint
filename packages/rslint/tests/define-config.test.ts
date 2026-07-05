@@ -43,6 +43,7 @@ describe('rstestPlugin preset', () => {
     expect(rstestPlugin.configs.recommended).toEqual({
       plugins: ['rstest'],
       rules: {
+        'rstest/expect-expect': 'warn',
         'rstest/no-commented-out-tests': 'warn',
         'rstest/no-focused-tests': 'error',
       },
