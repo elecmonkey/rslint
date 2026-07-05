@@ -1,29 +1,11 @@
 package no_disabled_tests
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/microsoft/typescript-go/shim/ast"
 	"github.com/web-infra-dev/rslint/internal/plugins/jest/utils"
+	testfwNoDisabledTests "github.com/web-infra-dev/rslint/internal/plugins/testfw/rules/no_disabled_tests"
 	"github.com/web-infra-dev/rslint/internal/rule"
 )
-
-// Message Builder
-
-func buildErrorMissingFunctionMessage() rule.RuleMessage {
-	return rule.RuleMessage{
-		Id:          "missingFunction",
-		Description: "Test is missing function argument",
-	}
-}
-
-func buildErrorSkippedTestMessage() rule.RuleMessage {
-	return rule.RuleMessage{
-		Id:          "skippedTest",
-		Description: "Tests should not be skipped",
-	}
-}
 
 func isPendingCall(node *ast.Node, ctx rule.RuleContext) bool {
 	if node == nil || node.Kind != ast.KindCallExpression {
@@ -68,34 +50,9 @@ func isPendingCall(node *ast.Node, ctx rule.RuleContext) bool {
 	return true
 }
 
-var NoDisabledTestsRule = rule.Rule{
-	Name: "jest/no-disabled-tests",
-	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
-		return rule.RuleListeners{
-			ast.KindCallExpression: func(node *ast.Node) {
-				if isPendingCall(node, ctx) {
-					ctx.ReportNode(node, buildErrorSkippedTestMessage())
-					return
-				}
-
-				jestFnCall := utils.ParseJestFnCall(node, ctx)
-				if jestFnCall == nil ||
-					jestFnCall.Kind != utils.JestFnTypeDescribe &&
-						jestFnCall.Kind != utils.JestFnTypeTest {
-					return
-				}
-
-				if strings.HasPrefix(jestFnCall.Name, "x") ||
-					slices.Contains(jestFnCall.Members, "skip") {
-					ctx.ReportNode(node, buildErrorSkippedTestMessage())
-				}
-
-				if jestFnCall.Kind == utils.JestFnTypeTest {
-					if len(node.Arguments()) < 2 && !slices.Contains(jestFnCall.Members, "todo") {
-						ctx.ReportNode(node, buildErrorMissingFunctionMessage())
-					}
-				}
-			},
-		}
-	},
-}
+var NoDisabledTestsRule = testfwNoDisabledTests.NewRule(testfwNoDisabledTests.Config{
+	Name:               "jest/no-disabled-tests",
+	Parse:              utils.ParseJestTestFnCall,
+	PendingCall:        isPendingCall,
+	DisabledNamePrefix: "x",
+})
